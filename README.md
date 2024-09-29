@@ -1,6 +1,6 @@
-# DHL Case Manager
+# Case Manager
 
-**DHL Case Manager** is a desktop application built with Electron, designed to help DHL employees manage and track cases efficiently. The application provides functionalities to add, edit, delete, and escalate cases, along with managing clients and generating reports.
+**Case Manager** is a desktop application built with Electron, designed to help employees manage and track cases efficiently. The application provides functionalities to add, edit, delete, and escalate cases, along with managing clients and generating reports.
 
 ## 📦 Features
 
