@@ -123,7 +123,7 @@
     }
 
     /* Button Styles */
-    .btn, .edit-btn, .delete-btn, .escalate-btn {
+    .btn, .edit-btn, .delete-btn, .escalate-btn, .take-ownership-btn {
       background-color: #D50000;
       color: #fff;
       border: none;
@@ -133,7 +133,7 @@
       transition: background-color 0.3s;
     }
 
-    .btn:hover, .edit-btn:hover, .delete-btn:hover, .escalate-btn:hover {
+    .btn:hover, .edit-btn:hover, .delete-btn:hover, .escalate-btn:hover, .take-ownership-btn:hover {
       background-color: #B00000;
     }
 
@@ -183,7 +183,7 @@
       margin-top: 10px;
     }
 
-    input, select {
+    input, select, textarea {
       margin-bottom: 15px;
       padding: 8px;
       border: 1px solid #ddd;
@@ -218,7 +218,7 @@
       <ul>
         <li><a href="#dashboard" class="nav-link" id="dashboard-link"> <span class="nav-icon">&#128200;</span> Dashboard</a></li>
         <li><a href="#cases" class="nav-link active-link" id="cases-link"> <span class="nav-icon">&#128196;</span> Cases</a></li>
-        <li><a href="#clients" class="nav-link" id="clients-link"> <span class="nav-icon">&#128101;</span> Clients</a></li>
+        <li><a href="#escalations" class="nav-link" id="escalations-link"> <span class="nav-icon">&#9888;&#65039;</span> Escalations</a></li>
         <li><a href="#reports" class="nav-link" id="reports-link"> <span class="nav-icon">&#128200;</span> Reports</a></li>
         <li><a href="#activity-dashboard" class="nav-link" id="activity-link"> <span class="nav-icon">&#128221;</span> Activity Dashboard</a></li>
         <li><a href="#tasks" class="nav-link" id="tasks-link"> <span class="nav-icon">&#128221;</span> Tasks</a></li>
@@ -249,6 +249,30 @@
           </thead>
           <tbody>
             <!-- Cases will be populated here dynamically -->
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Escalations Section -->
+      <section id="escalations" class="section">
+        <h1>Escalated Cases</h1>
+        <table id="escalations-table">
+          <thead>
+            <tr>
+              <th>Case ID</th>
+              <th>Consignment No</th>
+              <th>RTS/TPC No</th>
+              <th>Driver Name</th>
+              <th>Postcode</th>
+              <th>Assigned Employee</th>
+              <th>Status</th>
+              <th>Escalated By</th>
+              <th>Escalation Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Escalated cases will be populated here dynamically -->
           </tbody>
         </table>
       </section>
@@ -287,6 +311,9 @@
           <option value="Closed">Closed</option>
         </select>
 
+        <label for="additionalInfo">Additional Information:</label>
+        <textarea id="additionalInfo" rows="4"></textarea>
+
         <button type="submit" class="btn">Save Case</button>
       </form>
     </div>
@@ -299,9 +326,11 @@
       const closeModal = document.querySelector('.close');
       const caseForm = document.getElementById('case-form');
       const casesTable = document.getElementById('cases-table').querySelector('tbody');
+      const escalationsTable = document.getElementById('escalations-table').querySelector('tbody');
       const modalTitle = document.getElementById('modal-title');
 
       let cases = [];
+      let escalatedCases = [];
       let editingCaseId = null;
 
       // Open modal when Add New Case button is clicked
@@ -333,7 +362,14 @@
         if (editingCaseId) {
           // Update existing case
           const index = cases.findIndex(c => c.id === editingCaseId);
-          cases[index] = { ...cases[index], ...caseData };
+          if (index !== -1) {
+            cases[index] = { ...cases[index], ...caseData };
+          } else {
+            const escalatedIndex = escalatedCases.findIndex(c => c.id === editingCaseId);
+            if (escalatedIndex !== -1) {
+              escalatedCases[escalatedIndex] = { ...escalatedCases[escalatedIndex], ...caseData };
+            }
+          }
         } else {
           // Add new case
           caseData.id = Date.now().toString();
@@ -341,6 +377,7 @@
         }
 
         renderCases();
+        renderEscalations();
         caseModal.style.display = 'none';
         caseForm.reset();
       });
@@ -379,10 +416,42 @@
         });
       }
 
+      // Render escalations in the table
+      function renderEscalations() {
+        escalationsTable.innerHTML = '';
+        escalatedCases.forEach(caseItem => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${caseItem.id}</td>
+            <td>${caseItem.consignmentNo}</td>
+            <td>${caseItem.rtsTpcNo}</td>
+            <td>${caseItem.driverName}</td>
+            <td>${caseItem.postcode}</td>
+            <td>${caseItem.assignedEmployee}</td>
+            <td>${caseItem.status}</td>
+            <td>${caseItem.escalatedBy}</td>
+            <td>${caseItem.escalationDate}</td>
+            <td>
+              <button class="edit-btn" data-id="${caseItem.id}">Edit</button>
+              <button class="take-ownership-btn" data-id="${caseItem.id}">Take Ownership</button>
+            </td>
+          `;
+          escalationsTable.appendChild(row);
+        });
+
+        // Add event listeners for edit and take ownership buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+          btn.addEventListener('click', editCase);
+        });
+        document.querySelectorAll('.take-ownership-btn').forEach(btn => {
+          btn.addEventListener('click', takeOwnership);
+        });
+      }
+
       // Edit case
       function editCase(e) {
         const caseId = e.target.dataset.id;
-        const caseToEdit = cases.find(c => c.id === caseId);
+        const caseToEdit = cases.find(c => c.id === caseId) || escalatedCases.find(c => c.id === caseId);
         if (caseToEdit) {
           editingCaseId = caseId;
           modalTitle.textContent = 'Edit Case';
@@ -410,8 +479,28 @@
         const caseId = e.target.dataset.id;
         const caseToEscalate = cases.find(c => c.id === caseId);
         if (caseToEscalate) {
+          const escalatedCase = {
+            ...caseToEscalate,
+            escalatedBy: 'Current User', // Replace with actual user name
+            escalationDate: new Date().toISOString().split('T')[0]
+          };
+          escalatedCases.push(escalatedCase);
+          cases = cases.filter(c => c.id !== caseId);
+          renderCases();
+          renderEscalations();
           alert(`Case ${caseId} has been escalated.`);
-          // Here you can add more logic for escalation if needed
+        }
+      }
+
+      // Take ownership of escalated case
+      function takeOwnership(e) {
+        const caseId = e.target.dataset.id;
+        const caseToTakeOwnership = escalatedCases.find(c => c.id === caseId);
+        if (caseToTakeOwnership) {
+          caseToTakeOwnership.assignedEmployee = 'Manager'; // Replace with actual manager name
+          caseToTakeOwnership.status = 'In Progress';
+          renderEscalations();
+          alert(`You have taken ownership of Case ${caseId}.`);
         }
       }
 
@@ -434,6 +523,7 @@
 
       // Initial render
       renderCases();
+      renderEscalations();
     });
   </script>
 </body>
