@@ -172,6 +172,36 @@
       text-decoration: none;
       cursor: pointer;
     }
+
+    /* Form Styles */
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-top: 10px;
+    }
+
+    input, select {
+      margin-bottom: 15px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    /* Logo Styles */
+    .logo {
+      color: #D50000;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+
+    /* Actions Styles */
+    .actions {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
@@ -264,4 +294,147 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const addCaseBtn = document.getElement
+      const addCaseBtn = document.getElementById('add-case-btn');
+      const caseModal = document.getElementById('caseModal');
+      const closeModal = document.querySelector('.close');
+      const caseForm = document.getElementById('case-form');
+      const casesTable = document.getElementById('cases-table').querySelector('tbody');
+      const modalTitle = document.getElementById('modal-title');
+
+      let cases = [];
+      let editingCaseId = null;
+
+      // Open modal when Add New Case button is clicked
+      addCaseBtn.addEventListener('click', () => {
+        modalTitle.textContent = 'Add Case';
+        caseForm.reset();
+        editingCaseId = null;
+        caseModal.style.display = 'block';
+      });
+
+      // Close modal when close button is clicked
+      closeModal.addEventListener('click', () => {
+        caseModal.style.display = 'none';
+      });
+
+      // Close modal when clicking outside the modal
+      window.addEventListener('click', (event) => {
+        if (event.target === caseModal) {
+          caseModal.style.display = 'none';
+        }
+      });
+
+      // Handle form submission
+      caseForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(caseForm);
+        const caseData = Object.fromEntries(formData.entries());
+
+        if (editingCaseId) {
+          // Update existing case
+          const index = cases.findIndex(c => c.id === editingCaseId);
+          cases[index] = { ...cases[index], ...caseData };
+        } else {
+          // Add new case
+          caseData.id = Date.now().toString();
+          cases.push(caseData);
+        }
+
+        renderCases();
+        caseModal.style.display = 'none';
+        caseForm.reset();
+      });
+
+      // Render cases in the table
+      function renderCases() {
+        casesTable.innerHTML = '';
+        cases.forEach(caseItem => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${caseItem.id}</td>
+            <td>${caseItem.consignmentNo}</td>
+            <td>${caseItem.rtsTpcNo}</td>
+            <td>${caseItem.driverName}</td>
+            <td>${caseItem.postcode}</td>
+            <td>${caseItem.assignedEmployee}</td>
+            <td>${caseItem.status}</td>
+            <td>
+              <button class="edit-btn" data-id="${caseItem.id}">Edit</button>
+              <button class="delete-btn" data-id="${caseItem.id}">Delete</button>
+              <button class="escalate-btn" data-id="${caseItem.id}">Escalate</button>
+            </td>
+          `;
+          casesTable.appendChild(row);
+        });
+
+        // Add event listeners for edit, delete, and escalate buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+          btn.addEventListener('click', editCase);
+        });
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', deleteCase);
+        });
+        document.querySelectorAll('.escalate-btn').forEach(btn => {
+          btn.addEventListener('click', escalateCase);
+        });
+      }
+
+      // Edit case
+      function editCase(e) {
+        const caseId = e.target.dataset.id;
+        const caseToEdit = cases.find(c => c.id === caseId);
+        if (caseToEdit) {
+          editingCaseId = caseId;
+          modalTitle.textContent = 'Edit Case';
+          Object.keys(caseToEdit).forEach(key => {
+            const input = document.getElementById(key);
+            if (input) {
+              input.value = caseToEdit[key];
+            }
+          });
+          caseModal.style.display = 'block';
+        }
+      }
+
+      // Delete case
+      function deleteCase(e) {
+        const caseId = e.target.dataset.id;
+        if (confirm('Are you sure you want to delete this case?')) {
+          cases = cases.filter(c => c.id !== caseId);
+          renderCases();
+        }
+      }
+
+      // Escalate case
+      function escalateCase(e) {
+        const caseId = e.target.dataset.id;
+        const caseToEscalate = cases.find(c => c.id === caseId);
+        if (caseToEscalate) {
+          alert(`Case ${caseId} has been escalated.`);
+          // Here you can add more logic for escalation if needed
+        }
+      }
+
+      // Navigation
+      const navLinks = document.querySelectorAll('.nav-link');
+      const sections = document.querySelectorAll('.section');
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetId = link.getAttribute('href').substring(1);
+          sections.forEach(section => {
+            section.classList.remove('active');
+          });
+          document.getElementById(targetId).classList.add('active');
+          navLinks.forEach(l => l.classList.remove('active-link'));
+          link.classList.add('active-link');
+        });
+      });
+
+      // Initial render
+      renderCases();
+    });
+  </script>
+</body>
+</html>
