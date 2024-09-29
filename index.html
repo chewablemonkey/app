@@ -23,6 +23,7 @@
             flex-grow: 1;
             padding: 20px;
             background-color: #f0f0f0;
+            overflow-y: auto;
         }
 
         .nav-link {
@@ -57,15 +58,20 @@
             border: none;
             padding: 5px 10px;
             cursor: pointer;
+            margin-right: 5px;
         }
 
         button:hover {
             background-color: #AA040E;
         }
 
-        #addCaseForm, #editCaseForm {
+        #addCaseForm, #editCaseForm, #caseDetailsModal {
             display: none;
             margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         form {
@@ -74,9 +80,39 @@
             max-width: 300px;
         }
 
-        input, select {
+        input, select, textarea {
             margin-bottom: 10px;
             padding: 5px;
+        }
+
+        .priority-high {
+            background-color: #ffcccc;
+        }
+
+        .priority-medium {
+            background-color: #ffffcc;
+        }
+
+        .priority-low {
+            background-color: #ccffcc;
+        }
+
+        #casesFilter {
+            margin-bottom: 10px;
+        }
+
+        #caseHistory {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f9f9f9;
         }
     </style>
 </head>
@@ -98,6 +134,22 @@
         <div id="cases" class="page" style="display:none;">
             <h1>Cases</h1>
             <button id="addCaseBtn">Add New Case</button>
+            <div id="casesFilter">
+                <input type="text" id="searchInput" placeholder="Search cases...">
+                <select id="priorityFilter">
+                    <option value="">All Priorities</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <select id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                <button onclick="applyCasesFilter()">Apply Filter</button>
+            </div>
             <table id="casesTable">
                 <thead>
                     <tr>
@@ -108,6 +160,8 @@
                         <th>Postcode</th>
                         <th>Assigned Employee</th>
                         <th>Status</th>
+                        <th>Priority</th>
+                        <th>Due Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -133,6 +187,14 @@
                         <option value="In Progress">In Progress</option>
                         <option value="Closed">Closed</option>
                     </select>
+                    <select id="priority" required>
+                        <option value="">Select Priority</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <input type="date" id="dueDate" required>
+                    <textarea id="initialNote" placeholder="Initial case note"></textarea>
                     <button type="submit">Add Case</button>
                 </form>
             </div>
@@ -157,8 +219,27 @@
                         <option value="In Progress">In Progress</option>
                         <option value="Closed">Closed</option>
                     </select>
+                    <select id="editPriority" required>
+                        <option value="">Select Priority</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <input type="date" id="editDueDate" required>
+                    <textarea id="editNote" placeholder="Add a new note"></textarea>
                     <button type="submit">Update Case</button>
                 </form>
+            </div>
+
+            <div id="caseDetailsModal" style="display:none;">
+                <h2>Case Details</h2>
+                <div id="caseDetails"></div>
+                <h3>Case History</h3>
+                <div id="caseHistory"></div>
+                <h3>Add Note</h3>
+                <textarea id="newNote" placeholder="Add a new note"></textarea>
+                <button onclick="addNote()">Add Note</button>
+                <button onclick="closeCaseDetails()">Close</button>
             </div>
         </div>
 
@@ -174,6 +255,8 @@
                         <th>Postcode</th>
                         <th>Assigned Employee</th>
                         <th>Status</th>
+                        <th>Priority</th>
+                        <th>Due Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -216,8 +299,19 @@
                 driverName: document.getElementById('driverName').value,
                 postcode: document.getElementById('postcode').value,
                 assignedEmployee: document.getElementById('assignedEmployee').value,
-                status: document.getElementById('status').value
+                status: document.getElementById('status').value,
+                priority: document.getElementById('priority').value,
+                dueDate: document.getElementById('dueDate').value,
+                notes: [],
+                history: []
             };
+            const initialNote = document.getElementById('initialNote').value;
+            if (initialNote) {
+                newCase.notes.push({ date: new Date().toISOString(), text: initialNote });
+                newCase.history.push({ date: new Date().toISOString(), action: 'Case created', details: initialNote });
+            } else {
+                newCase.history.push({ date: new Date().toISOString(), action: 'Case created' });
+            }
             cases.push(newCase);
             renderCasesTable();
             document.getElementById('newCaseForm').reset();
@@ -229,15 +323,26 @@
             const caseId = parseInt(document.getElementById('editCaseId').value);
             const caseIndex = cases.findIndex(c => c.id === caseId);
             if (caseIndex !== -1) {
-                cases[caseIndex] = {
+                const updatedCase = {
                     id: caseId,
                     consignmentNo: document.getElementById('editConsignmentNo').value,
                     rtsTpcNo: document.getElementById('editRtsTpcNo').value,
                     driverName: document.getElementById('editDriverName').value,
                     postcode: document.getElementById('editPostcode').value,
                     assignedEmployee: document.getElementById('editAssignedEmployee').value,
-                    status: document.getElementById('editStatus').value
+                    status: document.getElementById('editStatus').value,
+                    priority: document.getElementById('editPriority').value,
+                    dueDate: document.getElementById('editDueDate').value,
+                    notes: cases[caseIndex].notes,
+                    history: cases[caseIndex].history
                 };
+                const newNote = document.getElementById('editNote').value;
+                if (newNote) {
+                    updatedCase.notes.push({ date: new Date().toISOString(), text: newNote });
+                    updatedCase.history.push({ date: new Date().toISOString(), action: 'Note added', details: newNote });
+                }
+                updatedCase.history.push({ date: new Date().toISOString(), action: 'Case updated' });
+                cases[caseIndex] = updatedCase;
                 renderCasesTable();
                 document.getElementById('editCaseForm').style.display = 'none';
             }
@@ -248,6 +353,7 @@
             tableBody.innerHTML = '';
             cases.forEach(caseItem => {
                 const row = tableBody.insertRow();
+                row.classList.add(`priority-${caseItem.priority.toLowerCase()}`);
                 row.innerHTML = `
                     <td>${caseItem.id}</td>
                     <td>${caseItem.consignmentNo}</td>
@@ -256,7 +362,10 @@
                     <td>${caseItem.postcode}</td>
                     <td>${caseItem.assignedEmployee}</td>
                     <td>${caseItem.status}</td>
+                    <td>${caseItem.priority}</td>
+                    <td>${caseItem.dueDate}</td>
                     <td>
+                        <button onclick="viewCaseDetails(${caseItem.id})">View</button>
                         <button onclick="editCase(${caseItem.id})">Edit</button>
                         <button onclick="deleteCase(${caseItem.id})">Delete</button>
                         <button onclick="escalateCase(${caseItem.id})">Escalate</button>
@@ -270,6 +379,7 @@
             tableBody.innerHTML = '';
             escalations.forEach(caseItem => {
                 const row = tableBody.insertRow();
+                row.classList.add(`priority-${caseItem.priority.toLowerCase()}`);
                 row.innerHTML = `
                     <td>${caseItem.id}</td>
                     <td>${caseItem.consignmentNo}</td>
@@ -278,7 +388,10 @@
                     <td>${caseItem.postcode}</td>
                     <td>${caseItem.assignedEmployee}</td>
                     <td>${caseItem.status}</td>
+                    <td>${caseItem.priority}</td>
+                    <td>${caseItem.dueDate}</td>
                     <td>
+                        <button onclick="viewCaseDetails(${caseItem.id}, true)">View</button>
                         <button onclick="takeOwnership(${caseItem.id})">Take Ownership</button>
                         <button onclick="editEscalatedCase(${caseItem.id})">Edit</button>
                         <button onclick="closeEscalatedCase(${caseItem.id})">Close</button>
@@ -297,6 +410,9 @@
                 document.getElementById('editPostcode').value = caseToEdit.postcode;
                 document.getElementById('editAssignedEmployee').value = caseToEdit.assignedEmployee;
                 document.getElementById('editStatus').value = caseToEdit.status;
+                document.getElementById('editPriority').value = caseToEdit.priority;
+                document.getElementById('editDueDate').value = caseToEdit.dueDate;
+                document.getElementById('editNote').value = '';
                 document.getElementById('editCaseForm').style.display = 'block';
             }
         }
@@ -309,6 +425,7 @@
         function escalateCase(id) {
             const caseToEscalate = cases.find(c => c.id === id);
             if (caseToEscalate) {
+                caseToEscalate.history.push({ date: new Date().toISOString(), action: 'Case escalated' });
                 escalations.push(caseToEscalate);
                 cases = cases.filter(c => c.id !== id);
                 renderCasesTable();
@@ -321,6 +438,7 @@
             if (escalatedCase) {
                 escalatedCase.assignedEmployee = 'Manager'; // Replace with actual manager name
                 escalatedCase.status = 'In Progress';
+                escalatedCase.history.push({ date: new Date().toISOString(), action: 'Ownership taken by manager' });
                 renderEscalationsTable();
             }
         }
@@ -335,6 +453,9 @@
                 document.getElementById('editPostcode').value = caseToEdit.postcode;
                 document.getElementById('editAssignedEmployee').value = caseToEdit.assignedEmployee;
                 document.getElementById('editStatus').value = caseToEdit.status;
+                document.getElementById('editPriority').value = caseToEdit.priority;
+                document.getElementById('editDueDate').value = caseToEdit.dueDate;
+                document.getElementById('editNote').value = '';
                 document.getElementById('editCaseForm').style.display = 'block';
             }
         }
@@ -343,8 +464,102 @@
             const caseIndex = escalations.findIndex(c => c.id === id);
             if (caseIndex !== -1) {
                 escalations[caseIndex].status = 'Closed';
+                escalations[caseIndex].history.push({ date: new Date().toISOString(), action: 'Case closed' });
                 renderEscalationsTable();
             }
+        }
+
+        function viewCaseDetails(id, isEscalated = false) {
+            const caseItem = isEscalated ? escalations.find(c => c.id === id) : cases.find(c => c.id === id);
+            if (caseItem) {
+                const detailsDiv = document.getElementById('caseDetails');
+                detailsDiv.innerHTML = `
+                    <p><strong>Case ID:</strong> ${caseItem.id}</p>
+                    <p><strong>Consignment No:</strong> ${caseItem.consignmentNo}</p>
+                    <p><strong>RTS/TPC No:</strong> ${caseItem.rtsTpcNo}</p>
+                    <p><strong>Driver Name:</strong> ${caseItem.driverName}</p>
+                    <p><strong>Postcode:</strong> ${caseItem.postcode}</p>
+                    <p><strong>Assigned Employee:</strong> ${caseItem.assignedEmployee}</p>
+                    <p><strong>Status:</strong> ${caseItem.status}</p>
+                    <p><strong>Priority:</strong> ${caseItem.priority}</p>
+                    <p><strong>Due Date:</strong> ${caseItem.dueDate}</p>
+                `;
+
+                const historyDiv = document.getElementById('caseHistory');
+                historyDiv.innerHTML = '';
+                caseItem.history.forEach(entry => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.classList.add('history-entry');
+                    entryDiv.innerHTML = `
+                        <p><strong>${new Date(entry.date).toLocaleString()}</strong>: ${entry.action}</p>
+                        ${entry.details ? `<p>${entry.details}</p>` : ''}
+                    `;
+                    historyDiv.appendChild(entryDiv);
+                });
+
+                document.getElementById('caseDetailsModal').style.display = 'block';
+            }
+        }
+
+        function closeCaseDetails() {
+            document.getElementById('caseDetailsModal').style.display = 'none';
+        }
+
+        function addNote() {
+            const newNote = document.getElementById('newNote').value;
+            if (newNote) {
+                const caseId = parseInt(document.getElementById('editCaseId').value);
+                const caseItem = cases.find(c => c.id === caseId) || escalations.find(c => c.id === caseId);
+                if (caseItem) {
+                    caseItem.notes.push({ date: new Date().toISOString(), text: newNote });
+                    caseItem.history.push({ date: new Date().toISOString(), action: 'Note added', details: newNote });
+                    document.getElementById('newNote').value = '';
+                    viewCaseDetails(caseId, escalations.some(c => c.id === caseId));
+                }
+            }
+        }
+
+        function applyCasesFilter() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filteredCases = cases.filter(caseItem => {
+                const matchesSearch = Object.values(caseItem).some(value => 
+                    value.toString().toLowerCase().includes(searchTerm)
+                );
+                const matchesPriority = !priorityFilter || caseItem.priority === priorityFilter;
+                const matchesStatus = !statusFilter || caseItem.status === statusFilter;
+                return matchesSearch && matchesPriority && matchesStatus;
+            });
+
+            renderFilteredCasesTable(filteredCases);
+        }
+
+        function renderFilteredCasesTable(filteredCases) {
+            const tableBody = document.querySelector('#casesTable tbody');
+            tableBody.innerHTML = '';
+            filteredCases.forEach(caseItem => {
+                const row = tableBody.insertRow();
+                row.classList.add(`priority-${caseItem.priority.toLowerCase()}`);
+                row.innerHTML = `
+                    <td>${caseItem.id}</td>
+                    <td>${caseItem.consignmentNo}</td>
+                    <td>${caseItem.rtsTpcNo}</td>
+                    <td>${caseItem.driverName}</td>
+                    <td>${caseItem.postcode}</td>
+                    <td>${caseItem.assignedEmployee}</td>
+                    <td>${caseItem.status}</td>
+                    <td>${caseItem.priority}</td>
+                    <td>${caseItem.dueDate}</td>
+                    <td>
+                        <button onclick="viewCaseDetails(${caseItem.id})">View</button>
+                        <button onclick="editCase(${caseItem.id})">Edit</button>
+                        <button onclick="deleteCase(${caseItem.id})">Delete</button>
+                        <button onclick="escalateCase(${caseItem.id})">Escalate</button>
+                    </td>
+                `;
+            });
         }
 
         // Initial render
