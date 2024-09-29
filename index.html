@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DHL Case Manager</title>
+  <style>
+    /* Typography */
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+
+    h1, h2 {
+      color: #D50000; /* DHL Red */
+    }
+
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 1.5em;
+      margin-bottom: 15px;
+    }
+
+    /* Layout */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #FFCC00; /* DHL Yellow */
+      padding: 10px 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .container {
+      display: flex;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background-color: #F7F7F7;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      overflow-y: auto;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar li {
+      margin-bottom: 10px;
+    }
+
+    .sidebar a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 4px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .sidebar a:hover, .sidebar a.active-link {
+      background-color: #D50000;
+      color: #fff;
+    }
+
+    .nav-icon {
+      margin-right: 10px;
+      font-size: 1.2em;
+    }
+
+    /* Main Content */
+    main {
+      flex: 1;
+      padding: 20px;
+      background-color: #FFFFFF;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    /* Table Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #FFCC00;
+      color: #fff;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    /* Button Styles */
+    .btn, .edit-btn, .delete-btn, .escalate-btn {
+      background-color: #D50000;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .btn:hover, .edit-btn:hover, .delete-btn:hover, .escalate-btn:hover {
+      background-color: #B00000;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Section -->
+  <header>
+    <a href="#dashboard" class="logo">DHL Case Manager</a>
+    <div class="hamburger">&#9776;</div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <ul>
+        <li><a href="#dashboard" class="nav-link" id="dashboard-link"> <span class="nav-icon">&#128200;</span> Dashboard</a></li>
+        <li><a href="#cases" class="nav-link active-link" id="cases-link"> <span class="nav-icon">&#128196;</span> Cases</a></li>
+        <li><a href="#clients" class="nav-link" id="clients-link"> <span class="nav-icon">&#128101;</span> Clients</a></li>
+        <li><a href="#reports" class="nav-link" id="reports-link"> <span class="nav-icon">&#128200;</span> Reports</a></li>
+        <li><a href="#activity-dashboard" class="nav-link" id="activity-link"> <span class="nav-icon">&#128221;</span> Activity Dashboard</a></li>
+        <li><a href="#tasks" class="nav-link" id="tasks-link"> <span class="nav-icon">&#128221;</span> Tasks</a></li>
+        <li><a href="#settings" class="nav-link" id="settings-link"> <span class="nav-icon">&#9881;&#65039;</span> Settings</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main>
+      <!-- Cases Section -->
+      <section id="cases" class="section active">
+        <h1>Manage Cases</h1>
+        <div class="actions">
+          <button id="add-case-btn" class="btn">Add New Case</button>
+        </div>
+        <table id="cases-table">
+          <thead>
+            <tr>
+              <th>Case ID</th>
+              <th>Consignment No</th>
+              <th>RTS/TPC No</th>
+              <th>Driver Name</th>
+              <th>Postcode</th>
+              <th>Assigned Employee</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Cases will be populated here dynamically -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add/Edit Case Modal -->
+  <div id="caseModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modal-title">Add Case</h2>
+      <form id="case-form">
+        <label for="consignmentNo">Consignment No:</label>
+        <input type="text" id="consignmentNo" required>
+
+        <label for="rtsTpcNo">RTS/TPC No:</label>
+        <input type="text" id="rtsTpcNo">
+
+        <label for="driverName">Driver Name:</label>
+        <input type="text" id="driverName" required>
+
+        <label for="postcode">Postcode:</label>
+        <input type="text" id="postcode" required>
+
+        <label for="assignedEmployee">Assigned Employee:</label>
+        <select id="assignedEmployee" required>
+          <option value="Jude">Jude</option>
+          <option value="Guy">Guy</option>
+          <option value="Jake">Jake</option>
+        </select>
+
+        <label for="status">Status:</label>
+        <select id="status" required>
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+
+        <button type="submit" class="btn">Save Case</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const addCaseBtn = document.getElement
